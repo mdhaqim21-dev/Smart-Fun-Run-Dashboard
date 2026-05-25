@@ -1,15 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Centralized Dashboard</title>
+    <meta charset="UTF-8">
+    <title>Smart Fun Run Dashboard</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #121212; 
+            color: #ffffff; 
+            padding: 20px; 
+        }
+        .grid-container { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+        }
+        .card { 
+            background-color: #1e1e1e; 
+            padding: 20px; 
+            border-radius: 8px; 
+            border: 1px solid #333; 
+        }
+        h1 { 
+            text-align: center; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px; 
+        }
+        h2 { 
+            color: #4CAF50; 
+            margin-top: 0; 
+        }
+        .alert { 
+            color: #f44336; 
+            font-weight: bold; 
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
     <script>
+        // Fetches data from your Python server every 2 seconds
         async function fetchData() {
             try {
                 const response = await fetch('/api/data');
-                const data = await response.json();
-                document.getElementById('dashboard-data').innerText = JSON.stringify(data, null, 4);
+                const db = await response.json();
+
+                // 1. Registration Data
+                const reg = db.registration || {};
+                document.getElementById('reg-count').innerText = reg.total_runners || "0";
+                document.getElementById('reg-latest').innerText = reg.latest_uid || "Waiting...";
+
+                // 2. Tracking Data
+                const track = db.tracking || {};
+                document.getElementById('track-active').innerText = track.active_runners || "0";
+                document.getElementById('track-leader').innerText = track.leader_uid || "Waiting...";
+
+                // 3. Environmental Data
+                const env = db.environment || {};
+                document.getElementById('env-temp').innerText = (env.temperature || "--") + " °C";
+                
+                const sosElement = document.getElementById('env-sos');
+                if (env.sos_active === true) {
+                    sosElement.innerHTML = "<span class='alert'>ACTIVE - DISPATCH HELP</span>";
+                } else {
+                    sosElement.innerHTML = "Clear";
+                }
+
+                // 4. Hydration Data
+                const hydro = db.hydration || {};
+                document.getElementById('hydro-level').innerText = (hydro.water_level || "--") + " %";
+
             } catch (error) {
-                console.error("Error fetching data");
+                console.error("Server disconnected.");
             }
         }
         setInterval(fetchData, 2000);
@@ -17,6 +80,30 @@
 </head>
 <body onload="fetchData()">
     <h1>Smart Fun Run Live Dashboard</h1>
-    <pre id="dashboard-data"></pre>
+    
+    <div class="grid-container">
+        <div class="card">
+            <h2>Registration & Check-In</h2>
+            <p>Total Checked-In: <span id="reg-count">0</span></p>
+            <p>Latest Runner UID: <span id="reg-latest">Waiting...</span></p>
+        </div>
+        
+        <div class="card">
+            <h2>Runner Tracking & Timing</h2>
+            <p>Runners on Course: <span id="track-active">0</span></p>
+            <p>Current Leader UID: <span id="track-leader">Waiting...</span></p>
+        </div>
+        
+        <div class="card">
+            <h2>Environment & Safety</h2>
+            <p>Course Temperature: <span id="env-temp">-- °C</span></p>
+            <p>SOS Interrupts: <span id="env-sos">Clear</span></p>
+        </div>
+        
+        <div class="card">
+            <h2>Smart Hydration</h2>
+            <p>Tank Water Level: <span id="hydro-level">-- %</span></p>
+        </div>
+    </div>
 </body>
 </html>
