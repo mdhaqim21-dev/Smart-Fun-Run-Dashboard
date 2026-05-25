@@ -2,108 +2,218 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Smart Fun Run Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Fun Run | Command Center</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background-color: #121212; 
-            color: #ffffff; 
-            padding: 20px; 
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --text: #f8fafc;
+            --accent: #38bdf8;
+            --danger: #ef4444;
         }
-        .grid-container { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 20px; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
         }
-        .card { 
-            background-color: #1e1e1e; 
-            padding: 20px; 
-            border-radius: 8px; 
-            border: 1px solid #333; 
+        h1 {
+            text-align: center;
+            color: var(--accent);
+            letter-spacing: 2px;
+            margin-bottom: 30px;
         }
-        h1 { 
-            text-align: center; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 10px; 
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
         }
-        h2 { 
-            color: #4CAF50; 
-            margin-top: 0; 
+        .card {
+            background-color: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
         }
-        .alert { 
-            color: #f44336; 
-            font-weight: bold; 
-            animation: blink 1s infinite;
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #94a3b8;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+            text-transform: uppercase;
         }
-        @keyframes blink {
-            50% { opacity: 0; }
+        .metric-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .metric {
+            text-align: center;
+        }
+        .data-value {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        .data-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .alert-box {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+            display: none; /* Hidden unless SOS is true */
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        canvas {
+            max-height: 200px;
+            margin-top: 10px;
         }
     </style>
+</head>
+<body>
+    <h1>SMART FUN RUN COMMAND CENTER</h1>
+    
+    <div class="dashboard-grid">
+        <div class="card">
+            <h2>Registration</h2>
+            <div class="metric-group">
+                <div class="metric">
+                    <span class="data-value" id="reg-count">0</span>
+                    <span class="data-label">Total Runners</span>
+                </div>
+                <div class="metric">
+                    <span class="data-value" id="reg-latest" style="font-size: 1.2rem; margin-top:10px;">--</span>
+                    <span class="data-label">Latest UID</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Tracking</h2>
+            <div class="metric-group">
+                <div class="metric">
+                    <span class="data-value" id="track-active">0</span>
+                    <span class="data-label">On Course</span>
+                </div>
+                <div class="metric">
+                    <span class="data-value" id="track-leader" style="font-size: 1.2rem; margin-top:10px;">--</span>
+                    <span class="data-label">Current Leader</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Environment</h2>
+            <div id="sos-alert" class="alert-box">SOS ACTIVATED - DISPATCH MEDICS</div>
+            <canvas id="tempChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h2>Hydration Station</h2>
+            <canvas id="waterChart"></canvas>
+        </div>
+    </div>
+
     <script>
-        // Fetches data from your Python server every 2 seconds
-        async function fetchData() {
+        // Initialize Charts
+        const tempCtx = document.getElementById('tempChart').getContext('2d');
+        const tempChart = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: ['-8s', '-6s', '-4s', '-2s', 'Now'],
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [0, 0, 0, 0, 0],
+                    borderColor: '#f59e0b',
+                    tension: 0.4
+                }]
+            },
+            options: { animation: false, scales: { y: { suggestedMin: 20, suggestedMax: 40 } } }
+        });
+
+        const waterCtx = document.getElementById('waterChart').getContext('2d');
+        const waterChart = new Chart(waterCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Water Level %'],
+                datasets: [{
+                    label: 'Tank Capacity',
+                    data: [0],
+                    backgroundColor: '#38bdf8'
+                }]
+            },
+            options: { animation: false, scales: { y: { min: 0, max: 100 } } }
+        });
+
+        // Efficiency Mechanism: Keep track of previous data to avoid unnecessary updates
+        let previousDataString = "";
+
+        async function fetchSmartData() {
             try {
                 const response = await fetch('/api/data');
-                const db = await response.json();
+                const rawData = await response.text();
+                
+                // Only update the interface if the data actually changed
+                if (rawData === previousDataString) return; 
+                previousDataString = rawData;
 
-                // 1. Registration Data
+                const db = JSON.parse(rawData);
+
+                // Update Registration
                 const reg = db.registration || {};
                 document.getElementById('reg-count').innerText = reg.total_runners || "0";
-                document.getElementById('reg-latest').innerText = reg.latest_uid || "Waiting...";
+                document.getElementById('reg-latest').innerText = reg.latest_uid || "--";
 
-                // 2. Tracking Data
+                // Update Tracking
                 const track = db.tracking || {};
                 document.getElementById('track-active').innerText = track.active_runners || "0";
-                document.getElementById('track-leader').innerText = track.leader_uid || "Waiting...";
+                document.getElementById('track-leader').innerText = track.leader_uid || "--";
 
-                // 3. Environmental Data
+                // Update Environment
                 const env = db.environment || {};
-                document.getElementById('env-temp').innerText = (env.temperature || "--") + " °C";
-                
-                const sosElement = document.getElementById('env-sos');
                 if (env.sos_active === true) {
-                    sosElement.innerHTML = "<span class='alert'>ACTIVE - DISPATCH HELP</span>";
+                    document.getElementById('sos-alert').style.display = 'block';
                 } else {
-                    sosElement.innerHTML = "Clear";
+                    document.getElementById('sos-alert').style.display = 'none';
+                }
+                
+                // Push new temperature to chart and remove oldest
+                if (env.temperature) {
+                    tempChart.data.datasets[0].data.shift();
+                    tempChart.data.datasets[0].data.push(env.temperature);
+                    tempChart.update();
                 }
 
-                // 4. Hydration Data
+                // Update Hydration
                 const hydro = db.hydration || {};
-                document.getElementById('hydro-level').innerText = (hydro.water_level || "--") + " %";
+                if (hydro.water_level) {
+                    waterChart.data.datasets[0].data[0] = hydro.water_level;
+                    waterChart.update();
+                }
 
             } catch (error) {
                 console.error("Server disconnected.");
             }
         }
-        setInterval(fetchData, 2000);
+
+        // Poll every 2 seconds
+        setInterval(fetchSmartData, 2000);
     </script>
-</head>
-<body onload="fetchData()">
-    <h1>Smart Fun Run Live Dashboard</h1>
-    
-    <div class="grid-container">
-        <div class="card">
-            <h2>Registration & Check-In</h2>
-            <p>Total Checked-In: <span id="reg-count">0</span></p>
-            <p>Latest Runner UID: <span id="reg-latest">Waiting...</span></p>
-        </div>
-        
-        <div class="card">
-            <h2>Runner Tracking & Timing</h2>
-            <p>Runners on Course: <span id="track-active">0</span></p>
-            <p>Current Leader UID: <span id="track-leader">Waiting...</span></p>
-        </div>
-        
-        <div class="card">
-            <h2>Environment & Safety</h2>
-            <p>Course Temperature: <span id="env-temp">-- °C</span></p>
-            <p>SOS Interrupts: <span id="env-sos">Clear</span></p>
-        </div>
-        
-        <div class="card">
-            <h2>Smart Hydration</h2>
-            <p>Tank Water Level: <span id="hydro-level">-- %</span></p>
-        </div>
-    </div>
 </body>
 </html>
